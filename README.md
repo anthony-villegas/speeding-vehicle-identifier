@@ -2,7 +2,9 @@
 EECS149 Final Project Repository
 
 ## Cloud Architecture & Image Processing
-The entirety of the cloud infastructure was built with AWS and functions as follows.
+The entirety of the cloud infastructure was built with AWS using the boto3 AWS SDK for Python ([documentation here](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)) and is described below. AWS code can be found in the /aws directory.
+
+![plot](./documentation_images/aws_diagram.drawio.png)
 
 The Raspberry Pi(s) upload the captured image and any relevant metadata to an S3 bucket. This triggers a lambda's handler function to activate and pass in the uploaded image into AWS Rekognition which allows for extraction of text from images. In our case we pass in the captured image of the license plate. Rekognition outputs text in terms of rows so if we have a license plate in the format where the state is above the license plate number then that text will be index 0 and the plate will be index 1. Rekognition also provides additional ability to filter text which allows us tune the system for different regions and license plate configurations. The lambda handler receives the returned text and uploads it to a DynamoDB table along with relevant data such as a timestamp. The DynamoDB table has its primary key as the license plate number and the secondary key as the timestamp. In this way we can view indexed information on violations along with any additional metadata which is desired to be uploaded to the table. 
 
