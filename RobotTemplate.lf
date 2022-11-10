@@ -1,0 +1,131 @@
+/**
+ * This code switches from STOPPED to DRIVING mode
+ * when a button on the robot is pressed, then, after
+ * traveling 0.5 meters as estimated by the encoders,
+ * turns 90 degrees, as estimated by the gyroscope, then
+ * travels another 0.5 meters. It continues this pattern
+ * until a button is pressed, at which point it stops.
+ * It also displays the distance traveled as estimated by
+ * reading the encoders.
+ */
+target C {
+    threading: false,
+    build: "../scripts/build_nrf_unix.sh"   
+};
+
+import Display from "lib/Display.lf";
+import EncoderToDistance from "lib/EncoderToDistance_Template.lf";
+import GyroAngle from "lib/GyroAngle.lf";
+
+preamble {=
+    // Include the functions for driving the robot
+    // and reading its sensors.
+    #include "lib/romi.h"
+=}
+
+reactor Robot {
+    input drive:bool;       // Toggle mode to stop if false.
+    input distance:float;   // Distance input.
+    //input speed_sp:float; // Setpoint of the speed;
+    output speed_pv:float; // Process variable of speed, obtained from the encoder;
+    output notify:string;   // Notify of mode change.
+//    state start_distance:float(0);   // Distance when entering DRIVING.
+//    state temp_distance:float(0); // Temp variable in case we hit bump while in drive
+    
+    state dt:float(0.1); //the time of each period;
+    state previous_distance:float(0);
+    state first:bool(true);   // Treat first distance input specially.
+    
+    reaction(startup) -> notify {=
+        // Initialize the robot.
+        APP_ERROR_CHECK(romi_init());
+        lf_set(notify, "INIT");
+    =}
+
+    reaction(distance) {=
+        if (self->first) {
+            // First encoder input, so distance should be zero.
+            self->previous_distance = distance->value;
+            self->first = false;
+            lf_set(speed_pv, 0);
+        } 
+        else {
+            float diff =  distance->value - self->previous_distance;
+            // dx = current distance - previous distance;
+            speed_detect = diff/dt;
+            self->previous_distance = distance->value;
+            // update the distance value;
+        }    
+     =}
+    
+    initial mode STOPPED {
+        reaction(drive) -> DRIVING, notify {=
+            if (drive->is_present) {
+                romi_drive_direct(75, 75);
+                lf_set_mode(DRIVING);
+                lf_set(notify, "DRIVING");
+            }
+        =}
+    }
+
+    mode DRIVING {
+
+        reaction(distance, drive) -> reset(TURNING), STOPPED, notify {=
+            if (!drive->is_present) {
+                if (distance->value - self->start_distance > 0.5f) {
+                    romi_drive_direct(-60, 60);
+                    lf_set_mode(TURNING);
+                    lf_set(notify, "TURNING");
+                }
+            } else {
+                romi_drive_direct(0, 0);
+                lf_set_mode(STOPPED);
+                lf_set(notify, "STOPPED");
+            }
+        =}
+
+    }
+    
+    mode TURNING {
+        gyro = new GyroAngle();
+        reaction(gyro.z, drive) -> DRIVING, STOPPED, notify {=
+            if (!drive->is_present) {
+                if (gyro.z->value >= 85) {
+                    romi_drive_direct(75, 75);
+                    lf_set_mode(DRIVING);
+                    lf_set(notify, "DRIVING");
+                }
+            } else {
+                romi_drive_direct(0, 0);
+                lf_set_mode(STOPPED);
+                lf_set(notify, "STOPPED");
+            }
+        =}
+    }
+
+main reactor {
+    timer t(0, 100 msec);
+    robot = new Robot();
+    display = new Display();
+    display2 = new Display(row = 1);
+    converter_left = new EncoderToDistance();
+    converter_right = new EncoderToDistance();
+    reaction(t) -> robot.drive, robot.bump, converter_left.encoder, converter_right.encoder {=
+        romi_sensors_t sensors;
+        romi_sensors_poll(&sensors);
+        if (romi_button_pressed(&sensors)) {
+            lf_set(robot.drive, true);
+        }
+
+        lf_set(converter_left.encoder, sensors.encoders.left);
+        lf_set(converter_right.encoder, sensors.encoders.right);
+    =}
+    robot.notify -> display.message;
+    converter_left.distance -> robot.distance;
+        
+    reaction(robot.speed_pv) -> display2.message {=
+        static char y[BUCKLER_DISPLAY_WIDTH + 1];
+        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "Left speed:%3.3f", robot.speed_pv);
+        lf_set(display2.message, y);
+    =}
+}
