@@ -1,0 +1,10 @@
+target Python;
+
+reactor LicensePlateExtractor(target_coord(0.5, 0.5)) {
+    input scene_image;
+    output plate_image;
+
+    reaction(scene_image) -> plate_image {=
+        plate_image.set(scene_image)
+    =}
+}
