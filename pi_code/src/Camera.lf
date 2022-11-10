@@ -1,0 +1,33 @@
+target Python;
+
+reactor Camera(exposure(3)) {
+    input trigger;
+    input flash_enable;
+    output image;
+    state flash_enabled(false);
+
+    initial mode FlashDisabled {
+        reaction(trigger) -> image {=
+            image.set([1, 2, 3])
+            print("No Flash Picture!")
+        =}
+
+        reaction(flash_enable) -> FlashEnabled {=
+            if flash_enable:
+                FlashEnabled.set()
+        =}
+
+    }
+
+    mode FlashEnabled {
+        reaction(trigger) -> image {=
+            image.set([1, 2, 3])
+            print("Flash Picture!")
+        =}
+
+        reaction(flash_enable) -> FlashDisabled {=
+            if not flash_enable:
+                FlashDisabled.set()
+        =}
+    }
+}

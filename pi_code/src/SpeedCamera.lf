@@ -1,0 +1,11 @@
+target Python;
+
+import Camera from "Camera.lf";
+import CameraController from "CameraController.lf";
+
+main reactor SpeedCamera {
+    camera = new Camera();
+    camera_controller = new CameraController();
+    camera_controller.flash_enable -> camera.flash_enable;
+    camera_controller.camera_trigger -> camera.trigger;
+}
