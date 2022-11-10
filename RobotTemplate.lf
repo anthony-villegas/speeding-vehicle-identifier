@@ -42,7 +42,7 @@ reactor Robot {
         lf_set(notify, "INIT");
     =}
 
-    reaction(distance) {=
+    reaction(distance) -> speed_pv {=
         if (self->first) {
             // First encoder input, so distance should be zero.
             self->previous_distance = distance->value;
@@ -52,7 +52,8 @@ reactor Robot {
         else {
             float diff =  distance->value - self->previous_distance;
             // dx = current distance - previous distance;
-            speed_detect = diff/dt;
+            float speed = diff/self->dt;
+            SET(speed_pv, speed);
             self->previous_distance = distance->value;
             // update the distance value;
         }    
@@ -72,7 +73,7 @@ reactor Robot {
 
         reaction(distance, drive) -> reset(TURNING), STOPPED, notify {=
             if (!drive->is_present) {
-                if (distance->value - self->start_distance > 0.5f) {
+                if (distance->value > 0.5f) {
                     romi_drive_direct(-60, 60);
                     lf_set_mode(TURNING);
                     lf_set(notify, "TURNING");
@@ -102,6 +103,8 @@ reactor Robot {
             }
         =}
     }
+}
+
 
 main reactor {
     timer t(0, 100 msec);
@@ -110,7 +113,7 @@ main reactor {
     display2 = new Display(row = 1);
     converter_left = new EncoderToDistance();
     converter_right = new EncoderToDistance();
-    reaction(t) -> robot.drive, robot.bump, converter_left.encoder, converter_right.encoder {=
+    reaction(t) -> robot.drive, converter_left.encoder, converter_right.encoder {=
         romi_sensors_t sensors;
         romi_sensors_poll(&sensors);
         if (romi_button_pressed(&sensors)) {
@@ -125,7 +128,7 @@ main reactor {
         
     reaction(robot.speed_pv) -> display2.message {=
         static char y[BUCKLER_DISPLAY_WIDTH + 1];
-        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "Left speed:%3.3f", robot.speed_pv);
+        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "Left:%3.3f", robot.speed_pv->value);
         lf_set(display2.message, y);
     =}
 }
