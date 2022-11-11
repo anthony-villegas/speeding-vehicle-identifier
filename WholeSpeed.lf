@@ -74,7 +74,7 @@ reactor Robot {
      =}
     
     initial mode STOPPED {
-        reaction(drive) -> DRIVING, notify {=
+        reaction(left_dis,drive) -> DRIVING, notify {=
             if (drive->is_present) {
                 romi_drive_direct(75, 75);
                 lf_set_mode(DRIVING);
@@ -105,7 +105,7 @@ reactor Robot {
     
     mode TURNING {
         gyro = new GyroAngle();
-        reaction(gyro.z, drive) -> DRIVING, STOPPED, notify {=
+        reaction(gyro.z, drive, left_dis) -> DRIVING, STOPPED, notify {=
             if (!drive->is_present) {
                 if (gyro.z->value >= 85) {
                     romi_drive_direct(75, 75);
@@ -145,9 +145,9 @@ main reactor {
     converter_left.distance -> robot.left_dis;
     converter_right.distance -> robot.right_dis;
         
-    reaction(robot.left_speed_pv) -> display2.message {=
+    reaction(robot.left_speed_pv, robot.right_speed_pv) -> display2.message {=
         static char y[BUCKLER_DISPLAY_WIDTH + 1];
-        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "Left:%3.3f Right:%3.3f",
+        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "L:%1.2f R:%1.2f",
         robot.left_speed_pv->value, robot.right_speed_pv->value);
         lf_set(display2.message, y);
     =}
