@@ -8,7 +8,7 @@
  * It also displays the distance traveled as estimated by
  * reading the encoders.
  */
-target C {
+ target C {
     threading: false,
     build: "../scripts/build_nrf_unix.sh"   
 };
@@ -24,42 +24,72 @@ preamble {=
 =}
 
 reactor Robot {
-    input drive:bool;       // Toggle mode.
-    input distance:float;   // Distance input.
-    input bump:bool; //false if bumped on left or center, true if bumped on right
+    input drive:bool;       // Toggle mode to stop if false.
+    input left_dis:float;   // Distance of the left wheel.
+    input right_dis:float;   // Distance of the right wheel.
+    //input speed_sp:float; // Setpoint of the speed;
+    output left_speed_pv:float; // Process variable of speed, obtained from the encoder;
+    output right_speed_pv:float;
     output notify:string;   // Notify of mode change.
-    state start_distance:float(0);   // Distance when entering DRIVING.
-    state temp_distance:float(0); //Temp variable in case we hit bump while in drive
-    state bump_dir:bool; //false if bumped on left or center, true if bumped on right
-
+//    state start_distance:float(0);   // Distance when entering DRIVING.
+//    state temp_distance:float(0); // Temp variable in case we hit bump while in drive
+    
+    state dt:float(0.1); // The time of each period;
+    // Same with the time in the main reactor.
+    state pre_left_dis:float(0); // Previous distance of the left wheel.
+    state pre_right_dis:float(0);
+    state distance:float(0); // Distance between two turnings.
+    // Using the left distance to represent the whole distance.
+    state first:bool(true);   // Treat first distance input specially.
+    
     reaction(startup) -> notify {=
         // Initialize the robot.
         APP_ERROR_CHECK(romi_init());
         lf_set(notify, "INIT");
     =}
 
+    reaction(left_dis,right_dis) -> left_speed_pv, right_speed_pv {=
+        if (self->first) {
+            // First distance input, so speed should be zero.
+            self->pre_left_dis = left_dis->value;
+            self->pre_right_dis = right_dis->value;
+            self->first = false;
+            lf_set(left_speed_pv, 0);
+            lf_set(right_speed_pv, 0);
+        } 
+        else {
+            float diff = left_dis->value - self->pre_left_dis;
+            // dx = current distance - previous distance;
+            float speed = diff/self->dt;
+            SET(left_speed_pv, speed);
+
+            diff = right_dis->value - self->pre_right_dis;
+            speed = diff/self->dt;
+            SET(right_speed_pv, speed);
+
+            // update the distance value;
+            self->pre_left_dis = left_dis->value;
+            self->pre_right_dis = right_dis->value;
+        }    
+     =}
+    
     initial mode STOPPED {
-        reaction(distance) {=
-            // Set the start_distance in case there is a transition to DRIVING.
-            self->start_distance = distance->value;
-        =}
-        reaction(drive) -> DRIVING, notify {=
+        reaction(left_dis,drive) -> DRIVING, notify {=
             if (drive->is_present) {
                 romi_drive_direct(75, 75);
                 lf_set_mode(DRIVING);
                 lf_set(notify, "DRIVING");
+                self->distance = left_dis->value;
             }
         =}
     }
 
     mode DRIVING {
-        reaction(distance) {=
-            self->temp_distance = distance->value;
-        =}
 
-        reaction(distance, drive) -> reset(TURNING), STOPPED, notify {=
+        reaction(left_dis, drive) -> reset(TURNING), STOPPED, notify {=
             if (!drive->is_present) {
-                if (distance->value - self->start_distance > 0.5f) {
+                // Using the left distance to represent the whole distance.
+                if (left_dis->value - self->distance > 0.5f) {
                     romi_drive_direct(-60, 60);
                     lf_set_mode(TURNING);
                     lf_set(notify, "TURNING");
@@ -71,84 +101,18 @@ reactor Robot {
             }
         =}
 
-        reaction(bump, drive) -> reset(REVERSE), STOPPED, notify {=
-            if(!drive->is_present) {
-                self->bump_dir = bump->value;
-                self->start_distance = self->temp_distance;
-                romi_drive_direct(-75, -75);
-                lf_set_mode(REVERSE);
-                lf_set(notify, "REVERSE");
-            } else {
-                romi_drive_direct(0, 0);
-                lf_set_mode(STOPPED);
-                lf_set(notify, "STOPPED");
-            }
-        =}
     }
     
     mode TURNING {
         gyro = new GyroAngle();
-        reaction(distance) {=
-            // Set the start_distance in case there is a transition to DRIVING.
-            self->start_distance = distance->value;
-        =}
-        reaction(gyro.z, drive) -> DRIVING, STOPPED, notify {=
+        reaction(gyro.z, drive, left_dis) -> DRIVING, STOPPED, notify {=
             if (!drive->is_present) {
                 if (gyro.z->value >= 85) {
                     romi_drive_direct(75, 75);
                     lf_set_mode(DRIVING);
                     lf_set(notify, "DRIVING");
-                }
-            } else {
-                romi_drive_direct(0, 0);
-                lf_set_mode(STOPPED);
-                lf_set(notify, "STOPPED");
-            }
-        =}
-    }
-
-    mode REVERSE {
-        reaction(distance, drive) -> reset(BUMP_TURNING), STOPPED, notify {=
-            if (!drive->is_present) {
-                if ((distance->value - self->start_distance) <= -0.1f) {
-                    //state bump_dir:bool; //false if bumped on left or center, true if bumped on right
-                    if(!self->bump_dir) {
-                        romi_drive_direct(60, -60);
-                        lf_set_mode(BUMP_TURNING);
-                        lf_set(notify, "BUMP_TURNING");
-                    }
-                    else if(self->bump_dir) {
-                        romi_drive_direct(-60, 60);
-                        lf_set_mode(BUMP_TURNING);
-                        lf_set(notify, "BUMP_TURNING");
-                    }
-                }
-            } else {
-                romi_drive_direct(0, 0);
-                lf_set_mode(STOPPED);
-                lf_set(notify, "STOPPED");
-            }
-        =}
-    }
-
-    mode BUMP_TURNING {
-        gyro_2 = new GyroAngle();
-        reaction(distance) {=
-            // Set the start_distance in case there is a transition to DRIVING.
-            self->start_distance = distance->value;
-        =}
-        reaction(gyro_2.z, drive) -> reset(DRIVING), STOPPED, notify {=
-            if (!drive->is_present) {
-                //state bump_dir:bool; //false if bumped on left or center, true if bumped on right
-                if (!self->bump_dir && gyro_2.z->value <= -45) {
-                    romi_drive_direct(75, 75);
-                    lf_set_mode(DRIVING);
-                    lf_set(notify, "DRIVING");
-                }
-                else if (self->bump_dir && gyro_2.z->value >= 45) {
-                    romi_drive_direct(75, 75);
-                    lf_set_mode(DRIVING);
-                    lf_set(notify, "DRIVING");
+                    // Count the distance from 0 again to avoid infinite loop of turning.
+                    self->distance = left_dis->value;
                 }
             } else {
                 romi_drive_direct(0, 0);
@@ -159,32 +123,49 @@ reactor Robot {
     }
 }
 
+// Since the speed obtained from distance is not the same unit with the unit used in Romi Setting;
+reactor SpeedCalibration(bias:float(0.0), sensitivity:float(681.2)) 
+{
+    input left:float;
+    input right:float;
+    output left_cal:float;
+    output right_cal:float;
+    reaction(left,right) -> left_cal, right_cal {=
+        float l = self->sensitivity*left->value - self->bias;
+        float r = self->sensitivity*right->value - self->bias;
+        lf_set(left_cal, l);
+        lf_set(right_cal, r);
+    =}
+}
+
 main reactor {
     timer t(0, 100 msec);
     robot = new Robot();
     display = new Display();
     display2 = new Display(row = 1);
-    converter = new EncoderToDistance();
-    reaction(t) -> robot.drive, robot.bump, converter.encoder {=
+    converter_left = new EncoderToDistance();
+    converter_right = new EncoderToDistance();
+    Cal = new SpeedCalibration();
+    reaction(t) -> robot.drive, converter_left.encoder, converter_right.encoder {=
         romi_sensors_t sensors;
         romi_sensors_poll(&sensors);
         if (romi_button_pressed(&sensors)) {
             lf_set(robot.drive, true);
         }
-        if (sensors.bumps.left || sensors.bumps.center) {
-            lf_set(robot.bump, false);
-        } else if(sensors.bumps.right) {
-            lf_set(robot.bump, true);
-        }
 
-        lf_set(converter.encoder, sensors.encoders.left);
+        lf_set(converter_left.encoder, sensors.encoders.left);
+        lf_set(converter_right.encoder, sensors.encoders.right);
     =}
     robot.notify -> display.message;
-    converter.distance -> robot.distance;
+    converter_left.distance -> robot.left_dis;
+    converter_right.distance -> robot.right_dis;
+    robot.left_speed_pv -> Cal.left;
+    robot.right_speed_pv -> Cal.right;
         
-    reaction(converter.distance) -> display2.message {=
+    reaction(Cal.left_cal, Cal.right_cal) -> display2.message {=
         static char y[BUCKLER_DISPLAY_WIDTH + 1];
-        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "distance:%3.3f", converter.distance->value);
+        snprintf(y, BUCKLER_DISPLAY_WIDTH + 1, "L:%3.1f R:%3.1f",
+        Cal.left_cal->value, Cal.right_cal->value);
         lf_set(display2.message, y);
     =}
 }
