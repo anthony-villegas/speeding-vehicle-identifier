@@ -6,5 +6,6 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5)) {
 
     reaction(scene_image) -> plate_image {=
         plate_image.set(scene_image)
+        print("scene image processed")
     =}
 }

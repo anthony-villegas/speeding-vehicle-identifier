@@ -1,20 +1,22 @@
 target Python;
 
-reactor CameraController(speed_limit(50.0), brightness_threshold(50.0)) {
+reactor CameraController(speed_limit(50.0), luminosity_threshold(50.0)) {
     input speed # float
-    input brightness # float
+    input luminosity # float
     output camera_trigger # pure signal
-    output flash_enable # boolean
+    output flash_enabled # boolean
+
     reaction(speed) -> camera_trigger {=
+        print("Speed: ", speed.value)
         if speed.value > self.speed_limit:
             camera_trigger.set(True)
     =}
 
-    reaction(brightness) -> flash_enable {=
-        if brightness.value >= self.brightness_threshold:
-            flash_enable.set(True)
+    reaction(luminosity) -> flash_enabled {=
+        print("Luminosity: ", luminosity.value)
+        if luminosity.value >= self.luminosity_threshold:
+            flash_enabled.set(True)
         else:
-            flash_enable.set(False)
+            flash_enabled.set(False)
     =} 
-
 }

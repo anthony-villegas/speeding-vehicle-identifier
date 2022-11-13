@@ -1,0 +1,11 @@
+target Python
+
+reactor SpeedSensorListener {
+    timer t(0, 1 sec)
+    output speed
+    state flip(false)
+    reaction(t) -> speed {=
+        speed.set(60.0) 
+        self.flip = not self.flip
+    =}
+}

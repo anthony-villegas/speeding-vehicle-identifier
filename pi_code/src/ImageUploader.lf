@@ -3,6 +3,6 @@ target Python;
 reactor ImageUploader {
     input image;
     reaction(image) {=
-        print("Uploaded")
+        print("Uploaded\n")
     =}
 }

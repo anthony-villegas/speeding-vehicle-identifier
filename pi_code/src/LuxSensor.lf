@@ -1,0 +1,15 @@
+target Python
+
+reactor LuxSensor {
+    timer t(0, 1 sec)
+    output luminosity
+    state flip(false)
+    reaction(t) -> luminosity {=
+        if self.flip:
+            luminosity.set(60)
+        else:
+            luminosity.set(40)
+
+        self.flip = not self.flip
+    =}
+}

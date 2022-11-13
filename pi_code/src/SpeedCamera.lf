@@ -2,10 +2,22 @@ target Python;
 
 import Camera from "Camera.lf";
 import CameraController from "CameraController.lf";
+import LicensePlateExtractor from "LicensePlateExtractor.lf";
+import ImageUploader from "ImageUploader.lf";
+import LuxSensor from "LuxSensor.lf";
+import SpeedSensorListener from "SpeedSensorListener.lf";
 
 main reactor SpeedCamera {
     camera = new Camera();
     camera_controller = new CameraController();
-    camera_controller.flash_enable -> camera.flash_enable;
+    plate_extractor = new LicensePlateExtractor();
+    uploader = new ImageUploader();
+    lux_sensor = new LuxSensor();
+    speed_sensor = new SpeedSensorListener();
+    lux_sensor.luminosity -> camera_controller.luminosity;
+    speed_sensor.speed -> camera_controller.speed;
+    camera_controller.flash_enabled -> camera.flash_enabled;
     camera_controller.camera_trigger -> camera.trigger;
+    camera.image -> plate_extractor.scene_image;
+    plate_extractor.plate_image -> uploader.image;
 }
