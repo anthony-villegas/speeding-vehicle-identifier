@@ -1,15 +1,29 @@
 target Python
 
-reactor LuxSensor {
-    timer t(0, 1 sec)
+reactor LuxSensor(gain(0), integration_time(1)) {
+    preamble {=
+        import board
+        import busio
+        import adafruit_tsl2561
+    =}
+    timer t(0, 500 msec)
     output luminosity
-    state flip(false)
-    reaction(t) -> luminosity {=
-        if self.flip:
-            luminosity.set(60)
-        else:
-            luminosity.set(40)
+    state tsl
+    reaction(startup) {=
+        # Create the I2C bus
+        i2c = self.busio.I2C(self.board.SCL, self.board.SDA)
+        # Create the TSL2561 instance, passing in the I2C bus
+        self.tsl = self.adafruit_tsl2561.TSL2561(i2c)
+        # Enable the light sensor
+        self.tsl.enabled = True
+        # Set gain 0=1x, 1=16x
+        self.tsl.gain = self.gain
+        # Set integration time (0=13.7ms, 1=101ms, 2=402ms, or 3=manual)
+        self.tsl.integration_time = self.integration_time
+    =}
 
-        self.flip = not self.flip
+    reaction(t) -> luminosity {=
+        lux = self.tsl.lux
+        luminosity.set(lux)
     =}
 }

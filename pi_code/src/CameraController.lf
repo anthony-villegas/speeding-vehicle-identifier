@@ -14,7 +14,9 @@ reactor CameraController(speed_limit(50.0), luminosity_threshold(50.0)) {
 
     reaction(luminosity) -> flash_enabled {=
         print("Luminosity: ", luminosity.value)
-        if luminosity.value >= self.luminosity_threshold:
+        if luminosity.value is None:
+            flash_enabled.set(False)
+        elif luminosity.value >= self.luminosity_threshold:
             flash_enabled.set(True)
         else:
             flash_enabled.set(False)
