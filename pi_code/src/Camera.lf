@@ -1,14 +1,33 @@
 target Python;
 
 reactor Camera(exposure(3)) {
+    preamble {=
+        import os
+        import time
+        import sys
+        directory = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        image_directory = os.path.join(directory, "captured_images")
+        
+        class Image:
+            def __init__(self, timestamp, filepath, body_string=None):
+                self.timestamp = timestamp
+                self.filepath = filepath
+                self.body_string = body_string
+    =}
+
     input trigger;
     input flash_enabled;
     output image;
 
     initial mode FlashDisabled {
         reaction(trigger) -> image {=
-            image.set([1, 2, 3])
+            # TODO: take picture using camera - store image in ../captured_images, filepath in Image object
+            timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
+            image_path = self.os.path.join(self.image_directory, "european_1.jpg") # delete once camera configured
+            image.set(self.Image(timestamp, image_path))
             print("No Flash Picture!")
+        =} deadline(20 msec) {=
+            print("No Flash Deadline Missed\n")
         =}
 
         reaction(flash_enabled) -> FlashEnabled {=
@@ -19,8 +38,13 @@ reactor Camera(exposure(3)) {
 
     mode FlashEnabled {
         reaction(trigger) -> image {=
-            image.set([1, 2, 3])
+            # TODO: take picture using camera - store image in ../captured_images, filepath in Image object
+            timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
+            image_path = self.os.path.join(self.image_directory, "european_1.jpg") # delete once camera configured
+            image.set(self.Image(timestamp, image_path))
             print("Flash Picture!")
+        =} deadline(20 msec) {=
+            print("Flash Deadline missed\n")
         =}
 
         reaction(flash_enabled) -> FlashDisabled {=

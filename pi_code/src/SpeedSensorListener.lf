@@ -1,7 +1,7 @@
 target Python
 
 reactor SpeedSensorListener {
-    timer t(0, 1 sec)
+    timer t(0, 5 sec)
     output speed
     state flip(false)
     reaction(t) -> speed {=

@@ -1,8 +1,20 @@
 target Python;
 
 reactor ImageUploader {
+    preamble {=
+        import boto3
+        import os
+        s3_client = boto3.client("s3")
+        bucket_name = "license-plate-images-bucket"
+    =}
+
     input image;
+
     reaction(image) {=
+        ## image_path = os.path.join(self.directory, "captured_images", image_name)
+        ## response = s3_client.upload_file(image_path, bucket_name, image_name)
+        self.s3_client.put_object(Bucket=self.bucket_name, Key=str(image.value.timestamp) + ".jpg", Body=image.value.body_string)
+        # print(image_path)
         print("Uploaded\n")
     =}
 }
