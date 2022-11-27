@@ -14,10 +14,11 @@ reactor SpeedSensorListener {
 
     physical action ble_input
     output speed
+    state ble_thread
 
-    reaction(startup) -> ble_input{=
-        self.asyncio.run(self.main(ble_input))
-        print("Hi hi")
+    reaction(startup) -> ble_input {=
+        self.ble_thread = self.threading.Thread(target=self.main, args=(ble_input, ))
+        self.ble_thread.start()
     =}
 
     reaction(ble_input) -> speed {=

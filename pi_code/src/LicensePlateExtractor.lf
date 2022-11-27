@@ -50,8 +50,6 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), cont
         grayscale, thresholded =  self.preprocess_image(scene_image.value.filepath)
         contours = self.get_contours(thresholded)
         plate = self.find_plate(grayscale, contours)
-        self.cv.imshow("plate", plate)
-        #scene_image.value.body_string = self.cv.imencode(".jpg", plate)[1].tostring()
         plate_image.set(self.Image(scene_image.value.timestamp,
                                    scene_image.value.filepath,
                                    self.cv.imencode(".jpg", plate)[1].tostring()
