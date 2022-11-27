@@ -1,11 +1,27 @@
-target Python
+target Python {
+    files: "./ble_battery.py"
+}
+
+preamble {=
+    import threading
+=}
 
 reactor SpeedSensorListener {
-    timer t(0, 5 sec)
+    preamble {=
+        from ble_battery import main
+        import asyncio
+    =}
+
+    physical action ble_input
     output speed
-    state flip(false)
-    reaction(t) -> speed {=
-        speed.set(60.0) 
-        self.flip = not self.flip
+
+    reaction(startup) -> ble_input{=
+        self.asyncio.run(self.main(ble_input))
+        print("Hi hi")
+    =}
+
+    reaction(ble_input) -> speed {=
+        print("Value Received: {}".format(ble_input.value))
+        speed.set(ble_input.value)
     =}
 }
