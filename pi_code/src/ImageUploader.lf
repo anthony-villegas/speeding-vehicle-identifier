@@ -11,7 +11,7 @@ reactor ImageUploader {
     input image;
 
     reaction(image) {=
-        #self.s3_client.put_object(Bucket=self.bucket_name, Key=str(image.value.timestamp) + ".jpg", Body=image.value.body_string)
+        self.s3_client.put_object(Bucket=self.bucket_name, Key=str(image.value.timestamp) + ".jpg", Body=image.value.body_string)
         print("Uploaded\n")
     =}
 }

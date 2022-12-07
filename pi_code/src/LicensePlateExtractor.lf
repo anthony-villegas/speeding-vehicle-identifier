@@ -6,9 +6,9 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), cont
         import numpy as np
         import imutils 
         class Image:
-            def __init__(self, timestamp, filepath, body_string=None):
+            def __init__(self, timestamp, image, body_string=None):
                 self.timestamp = timestamp
-                self.filepath = filepath
+                self.image = image
                 self.body_string = body_string
 
         def rescaleImage(self, frame, scale=1.0):
@@ -17,8 +17,8 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), cont
             dimensions = (width, height)
             return self.cv.resize(frame, dimensions, interpolation=self.cv.INTER_AREA)
 
-        def preprocess_image(self, image_address):
-            image = self.rescaleImage(self.cv.imread(image_address), scale=1.0)
+        def preprocess_image(self, img):
+            image = self.rescaleImage(img, scale=1.0)
             grayscale = self.cv.cvtColor(image, self.cv.COLOR_BGR2GRAY)
             __, thresholded = self.cv.threshold(grayscale, 127, 255, 0)
             return grayscale, thresholded
@@ -47,15 +47,18 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), cont
     output plate_image;
 
     reaction(scene_image) -> plate_image {=
-        grayscale, thresholded =  self.preprocess_image(scene_image.value.filepath)
+        grayscale, thresholded = self.preprocess_image(scene_image.value.image)
         contours = self.get_contours(thresholded)
         plate = self.find_plate(grayscale, contours)
-        plate_image.set(self.Image(scene_image.value.timestamp,
-                                   scene_image.value.filepath,
-                                   self.cv.imencode(".jpg", plate)[1].tostring()
+        if plate is None:
+            print("No plate found")
+        else:
+            plate_image.set(self.Image(scene_image.value.timestamp,
+                                    None,
+                                    self.cv.imencode(".jpg", plate)[1].tostring()
+                )
             )
-        )
-        print(scene_image.value.timestamp)
-        print("scene image processed")
+            print(scene_image.value.timestamp)
+            print("scene image processed")
     =}
 }

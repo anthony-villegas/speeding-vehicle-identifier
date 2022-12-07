@@ -2,30 +2,43 @@ target Python;
 
 reactor Camera(exposure(3)) {
     preamble {=
-        import os
+        import cv2 as cv
         import time
         import sys
-        directory = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        image_directory = os.path.join(directory, "captured_images")
         
         class Image:
-            def __init__(self, timestamp, filepath, body_string=None):
+            def __init__(self, timestamp, image, body_string=None):
                 self.timestamp = timestamp
-                self.filepath = filepath
+                self.image = image
                 self.body_string = body_string
     =}
 
     input trigger;
     input flash_enabled;
+    state video_stream;
     output image;
+
+    reaction(startup) {=
+        self.video_stream = self.cv.VideoCapture(0)
+        if self.video_stream.isOpened() is not True:
+            sys.stderr.write("Couldn't open webcam")
+            exit(1)
+        self.video_stream.set(self.cv.CAP_PROP_FRAME_WIDTH, 640)
+        self.video_stream.set(self.cv.CAP_PROP_FRAME_HEIGHT, 480)
+    =}
+
+    reaction(shutdown) {=
+        self.video_stream.release()
+        self.cv.destroyAllWindows()
+    =}
 
     initial mode FlashDisabled {
         reaction(trigger) -> image {=
-            # TODO: take picture using camera - store image in ../captured_images, filepath in Image object
             timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
-            image_path = self.os.path.join(self.image_directory, "european_1.jpg") # delete once camera configured
-            image.set(self.Image(timestamp, image_path))
-            print("No Flash Picture!")
+            ret, frame = self.video_stream.read()
+            if ret is True:
+                image.set(self.Image(timestamp, frame))
+            
         =} deadline(20 msec) {=
             print("No Flash Deadline Missed\n")
         =}
@@ -38,10 +51,11 @@ reactor Camera(exposure(3)) {
 
     mode FlashEnabled {
         reaction(trigger) -> image {=
-            # TODO: take picture using camera - store image in ../captured_images, filepath in Image object
             timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
-            image_path = self.os.path.join(self.image_directory, "european_1.jpg") # delete once camera configured
-            image.set(self.Image(timestamp, image_path))
+            ret, frame = self.video_stream.read()            
+            if ret is True:
+                image.set(self.Image(timestamp, frame))
+
             print("Flash Picture!")
         =} deadline(20 msec) {=
             print("Flash Deadline missed\n")
