@@ -36,9 +36,11 @@ reactor Camera(exposure(3)) {
     initial mode FlashDisabled {
         reaction(trigger) -> image {=
             timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
-            if self.frame.value is not None:
-                image.set(self.Image(timestamp, self.frame.value))
+            if self.frame is not None:
+                image.set(self.Image(timestamp, self.frame))
                 print("No flash picture")
+            else:
+                print("No frame")
             
         =} deadline(20 msec) {=
             print("No Flash Deadline Missed\n")
