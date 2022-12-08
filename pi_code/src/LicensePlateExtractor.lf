@@ -1,6 +1,6 @@
 target Python;
 
-reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), contour_count(10), scale(1.0)) {
+reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), contour_count(5), scale(1.0)) {
     preamble {=
         import cv2 as cv
         import numpy as np
@@ -18,8 +18,9 @@ reactor LicensePlateExtractor(target_coord(0.5, 0.5), min_AR(4), max_AR(5), cont
             return self.cv.resize(frame, dimensions, interpolation=self.cv.INTER_AREA)
 
         def preprocess_image(self, img):
-            image = self.rescaleImage(img, scale=1.0)
-            grayscale = self.cv.cvtColor(image, self.cv.COLOR_BGR2GRAY)
+            #image = self.rescaleImage(img, scale=1.0)
+            #grayscale = self.cv.cvtColor(image, self.cv.COLOR_BGR2GRAY)
+            grayscale = self.cv.cvtColor(img, self.cv.COLOR_BGR2GRAY)
             __, thresholded = self.cv.threshold(grayscale, 127, 255, 0)
             return grayscale, thresholded
 

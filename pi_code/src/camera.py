@@ -8,11 +8,12 @@ from picamera import PiCamera
 def frame_capture(self, frame_capture_action):
     camera = PiCamera()
     camera.resolution = (640, 480)
-    camera.framerate = 30
+    camera.framerate = 15
     rawCapture = PiRGBArray(camera, size=(640, 480))
 
     time.sleep(0.1)
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+        time.sleep(0.01)
         frame_capture_action.schedule(0, frame.array)
         rawCapture.truncate(0)
         
