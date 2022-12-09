@@ -22,7 +22,7 @@ async def run_ble_client(ble_input):
         print("Connected to {}".format(device))
         await client.start_notify(BATTERY_LEVEL_UUID, callback_handler) #setup callback handler
         while True:
-            await asyncio.sleep(0.0)
+            await asyncio.sleep(0.01)
 
 def main(self, ble_input):
     asyncio.run(start_background_loop(ble_input))

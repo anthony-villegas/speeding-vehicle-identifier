@@ -5,10 +5,8 @@ target Python {
 reactor Camera(exposure(3)) {
     input trigger;
     input flash_enabled;
-    state camera
-    state rawCapture
-    #state frame;
-    #state picamera_thread
+    state frame;
+    state picamera_thread
     output image;
     physical action frame_capture_action
 
@@ -17,9 +15,7 @@ reactor Camera(exposure(3)) {
         import time
         import sys
         import threading
-        from picamera.array import PiRGBArray
-        from picamera import PiCamera
-        #from camera import frame_capture
+        from camera import frame_capture
         
         class Image:
             def __init__(self, timestamp, image, body_string=None):
@@ -28,14 +24,9 @@ reactor Camera(exposure(3)) {
                 self.body_string = body_string
     =}
 
-    reaction(startup) -> frame_capture_action {=
-        self.camera = self.PiCamera()
-        self.camera.resolution = (640, 480)
-        self.rawCapture = self.PiRGBArray(self.camera, size=(640, 480))
-
-        
-        #self.picamera_thread = self.threading.Thread(target=self.frame_capture, args=(frame_capture_action,))
-        #self.picamera_thread.start()
+    reaction(startup) -> frame_capture_action {=        
+        self.picamera_thread = self.threading.Thread(target=self.frame_capture, args=(frame_capture_action,))
+        self.picamera_thread.start()
     =}
 
     reaction(frame_capture_action) {=
@@ -45,14 +36,11 @@ reactor Camera(exposure(3)) {
     initial mode FlashDisabled {
         reaction(trigger) -> image {=
             timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
-            self.camera.capture(self.rawCapture, format="bgr")
-            image.set(self.Image(timestamp, self.rawCapture.array))
-            self.rawCapture.truncate(0)
-            #if self.frame is not None:
-            #    image.set(self.Image(timestamp, self.frame))
-            #    print("No flash picture")
-            #else:
-            #    print("No frame")
+            if self.frame is not None:
+                image.set(self.Image(timestamp, self.frame))
+                print("No flash picture")
+            else:
+                print("No frame")
             
         =} deadline(20 msec) {=
             print("No Flash Deadline Missed\n")
@@ -67,12 +55,11 @@ reactor Camera(exposure(3)) {
     mode FlashEnabled {
         reaction(trigger) -> image {=
             timestamp = self.time.strftime("%Y_%m_%d_%H_%M_%S")
-            self.camera.capture(self.rawCapture, format="bgr")
-            image.set(self.Image(timestamp, self.rawCapture.array))
-            self.rawCapture.truncate(0)
-            #if self.frame is not None:
-            #    image.set(self.Image(timestamp, self.frame))
-            #    print("Flash Picture!")
+            if self.frame is not None:
+                image.set(self.Image(timestamp, self.frame))
+                print("Flash Picture!")
+            else:
+                print("No frame")
         =} deadline(20 msec) {=
             print("Flash Deadline missed\n")
         =}
