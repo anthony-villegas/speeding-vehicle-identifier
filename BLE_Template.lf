@@ -34,12 +34,8 @@ preamble {=
     // Characteristic reflecting key presses.
     // The characteristic is identified within the service by a 16-bit unique ID.
     static simple_ble_char_t key_state_characteristic = {.uuid16 = 0x7182};
-    
-    typedef struct num_t {
-            int numbers[9];
-        } num_t;
-        
-    static num_t outs;
+
+    static uint8_t directions[4];
 =}
 
 /**
@@ -53,7 +49,7 @@ preamble {=
  */
 reactor ArrowKeys(period:time(100 ms)) {
 
-    output n:num_t;
+    output level:int;
 
     timer t(0, period);
 
@@ -66,18 +62,25 @@ reactor ArrowKeys(period:time(100 ms)) {
         simple_ble_add_service(&romi_service);  
         
         simple_ble_add_characteristic(1, 1, 0, 0,
-            sizeof(outs), (uint8_t*)&outs,
+            sizeof(directions), (uint8_t*)&directions,
             &romi_service, &key_state_characteristic);
         
         simple_ble_adv_only_name();
 
     =}
 
-    reaction(t) -> n {=
+    reaction(t) -> level {=
         // Output a boolean for each arrow key, where true
         // indicates that the key is currently pressed and false
         // indicates that it is not.
-        lf_set(n,outs);
+        for(int i=0;i<4;i++)
+        {
+            if(directions[i])
+            {
+                lf_set(level,i);
+            }
+        }
+        // Your code goes here.
     =}
 }
 
@@ -92,15 +95,9 @@ main reactor {
     display = new Display();
     keys    = new ArrowKeys();
 
-    reaction(keys.n) -> display.message {=
-        static char message[9] = "__________\0";
-        for (int i=0; i<9; i++) {
-            if (keys.n->value.numbers[i]) {
-            message[i] = i+'0';
-        } else {
-            message[i] = '_';
-        }
-        }
+    reaction(keys.level) -> display.message {=
+        static char message[8] = "input:_\0";
+        message[8-2] = keys.level->value+'0';
         lf_set(display.message, message);
     =}
 }

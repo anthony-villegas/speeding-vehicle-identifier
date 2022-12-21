@@ -16,6 +16,7 @@
 import Display from "lib/Display.lf";
 import EncoderToDistance from "lib/EncoderToDistance_Template.lf";
 import GyroAngle from "lib/GyroAngle.lf";
+import ArrowKeys from "BLE_Template.lf";
 
 preamble {=
     // Include the functions for driving the robot
@@ -24,6 +25,9 @@ preamble {=
 =}
 
 reactor Robot {
+    
+    keys = new ArrowKeys();
+    
     input drive:bool;       // Toggle mode to stop if false.
     input left_dis:float;   // Distance of the left wheel.
     input right_dis:float;   // Distance of the right wheel.
@@ -75,10 +79,10 @@ reactor Robot {
     
     initial mode STOPPED {
         reaction(left_dis,drive) -> DRIVING, notify {=
+            lf_set(notify, "STOPPED");
+            romi_drive_direct(0, 0);
             if (drive->is_present) {
-                romi_drive_direct(75, 75);
                 lf_set_mode(DRIVING);
-                lf_set(notify, "DRIVING");
                 self->distance = left_dis->value;
             }
         =}
@@ -86,18 +90,24 @@ reactor Robot {
 
     mode DRIVING {
 
-        reaction(left_dis, drive) -> reset(TURNING), STOPPED, notify {=
+        reaction(left_dis, drive, keys.level) -> TURNING, STOPPED, notify {=
+            
+                lf_set(notify, "DRIVING");
+                float defaultSpeed = 30;
+                float leftspeed = defaultSpeed;
+                float rightspeed = defaultSpeed;
+                
+                leftspeed = keys.level->value* defaultSpeed;
+                rightspeed = keys.level->value* defaultSpeed;
+                
+                romi_drive_direct(leftspeed, rightspeed);
             if (!drive->is_present) {
                 // Using the left distance to represent the whole distance.
                 if (left_dis->value - self->distance > 0.5f) {
-                    romi_drive_direct(-60, 60);
                     lf_set_mode(TURNING);
-                    lf_set(notify, "TURNING");
                 }
             } else {
-                romi_drive_direct(0, 0);
                 lf_set_mode(STOPPED);
-                lf_set(notify, "STOPPED");
             }
         =}
 
@@ -106,18 +116,17 @@ reactor Robot {
     mode TURNING {
         gyro = new GyroAngle();
         reaction(gyro.z, drive, left_dis) -> DRIVING, STOPPED, notify {=
+                    lf_set(notify, "TURNING");
+                    romi_drive_direct(-60, 60);
             if (!drive->is_present) {
                 if (gyro.z->value >= 85) {
-                    romi_drive_direct(75, 75);
                     lf_set_mode(DRIVING);
-                    lf_set(notify, "DRIVING");
+                    
                     // Count the distance from 0 again to avoid infinite loop of turning.
                     self->distance = left_dis->value;
                 }
             } else {
-                romi_drive_direct(0, 0);
                 lf_set_mode(STOPPED);
-                lf_set(notify, "STOPPED");
             }
         =}
     }
