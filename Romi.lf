@@ -1,14 +1,4 @@
-/**
- * This code switches from STOPPED to DRIVING mode
- * when a button on the robot is pressed, then, after
- * traveling 0.5 meters as estimated by the encoders,
- * turns 90 degrees, as estimated by the gyroscope, then
- * travels another 0.5 meters. It continues this pattern
- * until a button is pressed, at which point it stops.
- * It also displays the distance traveled as estimated by
- * reading the encoders.
- */
- target C {
+target C {
     threading: false,
     build: "../scripts/build_nrf_unix.sh"   
 };
