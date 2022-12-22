@@ -70,9 +70,7 @@ reactor ArrowKeys(period:time(100 ms)) {
     =}
 
     reaction(t) -> level {=
-        // Output a boolean for each arrow key, where true
-        // indicates that the key is currently pressed and false
-        // indicates that it is not.
+        // Output a boolean for each number as speed level
         for(int i=0;i<4;i++)
         {
             if(directions[i])
@@ -80,7 +78,6 @@ reactor ArrowKeys(period:time(100 ms)) {
                 lf_set(level,i);
             }
         }
-        // Your code goes here.
     =}
 }
 
